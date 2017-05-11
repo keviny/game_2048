@@ -1,0 +1,2 @@
+Run trainer command
+python game_train.py --output_path=/media/kevin/Data/tensorflow/ --exp_name=10t

@@ -1,0 +1,24 @@
+INFO:tensorflow:Created variable model_conv1_weights:0 with shape (4, 4, 1, 64) and init <function _initializer at 0x7f809dcf7de8>
+INFO:tensorflow:Created variable model_conv1_biases:0 with shape (64,) and init <function _initializer at 0x7f809dcf7de8>
+INFO:tensorflow:Created variable model_conv2_weights:0 with shape (4, 4, 64, 32) and init <function _initializer at 0x7f809dcf7de8>
+INFO:tensorflow:Created variable model_conv2_biases:0 with shape (32,) and init <function _initializer at 0x7f809dcf7de8>
+INFO:tensorflow:Created variable model_local3_weights:0 with shape (128, 32) and init <function _initializer at 0x7f809dcf7de8>
+INFO:tensorflow:Created variable model_local3_biases:0 with shape (32,) and init <function _initializer at 0x7f809dcf7de8>
+INFO:tensorflow:Created variable model_matmul4_weights:0 with shape (32, 1) and init <function _initializer at 0x7f809dcf7de8>
+INFO:tensorflow:Created variable model_matmul4_biases:0 with shape (1,) and init <function _initializer at 0x7f809dcf7de8>
+INFO:tensorflow:Created variable model_conv1_weights:0 with shape (4, 4, 1, 64) and init <function _initializer at 0x7fecdd8f8de8>
+INFO:tensorflow:Created variable model_conv1_biases:0 with shape (64,) and init <function _initializer at 0x7fecdd8f8de8>
+INFO:tensorflow:Created variable model_conv2_weights:0 with shape (4, 4, 64, 32) and init <function _initializer at 0x7fecdd8f8de8>
+INFO:tensorflow:Created variable model_conv2_biases:0 with shape (32,) and init <function _initializer at 0x7fecdd8f8de8>
+INFO:tensorflow:Created variable model_local3_weights:0 with shape (128, 32) and init <function _initializer at 0x7fecdd8f8de8>
+INFO:tensorflow:Created variable model_local3_biases:0 with shape (32,) and init <function _initializer at 0x7fecdd8f8de8>
+INFO:tensorflow:Created variable model_matmul4_weights:0 with shape (32, 1) and init <function _initializer at 0x7fecdd8f8de8>
+INFO:tensorflow:Created variable model_matmul4_biases:0 with shape (1,) and init <function _initializer at 0x7fecdd8f8de8>
+INFO:tensorflow:Created variable model_conv1_weights:0 with shape (4, 4, 1, 64) and init <function _initializer at 0x7f1c327aade8>
+INFO:tensorflow:Created variable model_conv1_biases:0 with shape (64,) and init <function _initializer at 0x7f1c327aade8>
+INFO:tensorflow:Created variable model_conv2_weights:0 with shape (4, 4, 64, 32) and init <function _initializer at 0x7f1c327aade8>
+INFO:tensorflow:Created variable model_conv2_biases:0 with shape (32,) and init <function _initializer at 0x7f1c327aade8>
+INFO:tensorflow:Created variable model_local3_weights:0 with shape (128, 32) and init <function _initializer at 0x7f1c327aade8>
+INFO:tensorflow:Created variable model_local3_biases:0 with shape (32,) and init <function _initializer at 0x7f1c327aade8>
+INFO:tensorflow:Created variable model_matmul4_weights:0 with shape (32, 1) and init <function _initializer at 0x7f1c327aade8>
+INFO:tensorflow:Created variable model_matmul4_biases:0 with shape (1,) and init <function _initializer at 0x7f1c327aade8>

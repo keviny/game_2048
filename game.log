@@ -22,3 +22,99 @@ INFO:tensorflow:Created variable model_local3_weights:0 with shape (128, 32) and
 INFO:tensorflow:Created variable model_local3_biases:0 with shape (32,) and init <function _initializer at 0x7f1c327aade8>
 INFO:tensorflow:Created variable model_matmul4_weights:0 with shape (32, 1) and init <function _initializer at 0x7f1c327aade8>
 INFO:tensorflow:Created variable model_matmul4_biases:0 with shape (1,) and init <function _initializer at 0x7f1c327aade8>
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.ckpt-32.meta
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.ckpt-32.data-00000-of-0000
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.checkpoint
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.ckpt-32.index
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.checkpoint
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.checkpoint
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.checkpoint
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.checkpoint
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint//f6-model.checkpoints
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint//f6-model.checkpoints
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.checkpoints
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.checkpoint
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6-model.checkpoint
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+WARNING:tensorflow:From game_simulator.py:38: initialize_all_variables (from tensorflow.python.ops.variables) is deprecated and will be removed after 2017-03-02.
+Instructions for updating:
+Use `tf.global_variables_initializer` instead.
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+WARNING:tensorflow:From game_simulator.py:38: initialize_all_variables (from tensorflow.python.ops.variables) is deprecated and will be removed after 2017-03-02.
+Instructions for updating:
+Use `tf.global_variables_initializer` instead.
+INFO:root:Final result: 00000 277:3360.000000
+INFO:root:Final result: 00001 479:7048.000000
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+WARNING:tensorflow:From game_simulator.py:38: initialize_all_variables (from tensorflow.python.ops.variables) is deprecated and will be removed after 2017-03-02.
+Instructions for updating:
+Use `tf.global_variables_initializer` instead.
+INFO:root:Final result: 00000 496:7180.000000
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+WARNING:tensorflow:From game_simulator.py:38: initialize_all_variables (from tensorflow.python.ops.variables) is deprecated and will be removed after 2017-03-02.
+Instructions for updating:
+Use `tf.global_variables_initializer` instead.
+INFO:root:Final result: 00000 886:15376.000000
+INFO:root:Final result: 00001 325:3940.000000
+INFO:root:Final result: 00002 367:5252.000000
+INFO:root:Final result: 00003 497:7184.000000
+INFO:root:Final result: 00004 508:7196.000000
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:root:Final result: 00000 244:2984.000000
+INFO:root:Final result: 00001 282:3380.000000
+INFO:root:Final result: 00002 274:3240.000000
+INFO:root:Final result: 00003 658:11392.000000
+INFO:root:Final result: 00004 385:5584.000000
+INFO:root:Final result: 00005 454:6772.000000
+INFO:root:Final result: 00006 387:5480.000000
+INFO:root:Final result: 00007 393:5732.000000
+INFO:root:Final result: 00008 371:5332.000000
+INFO:root:Final result: 00009 278:3376.000000
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt
+INFO:root:Final result: 00000 510:7364.000000
+INFO:tensorflow:Restoring parameters from /media/kevin/Data/tensorflow/checkpoint/f6/model.ckpt

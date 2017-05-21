@@ -59,12 +59,12 @@ def train():
 
     """Trains the game_model."""
     with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
-        game_obj = game_model.GameModel(batch_size)
+        game_obj = game_model.GameModel("train", batch_size)
         global_step = tf.Variable(0, trainable=False)
         averages = tf.train.ExponentialMovingAverage(0.95, global_step)
 
         # Get the score of each direction.
-        actions_q, debug_tensor, _ = game_obj.generate_action_q("train")
+        actions_q = game_obj.get_internal_variable().get("action_q")
         # Only for test purpose.
         regularization = game_obj.get_classified_regularization()
         pl_dict = game_obj.get_pl_dict()
@@ -92,7 +92,7 @@ def train():
         for var in tf.trainable_variables():
             tf.summary.histogram(var.op.name, var)
 
-        for var in game_obj.get_internal_variable():
+        for var in game_obj.get_internal_variable().values():
             tf.summary.histogram(var.op.name, var)
 
         tf.summary.merge_all()
@@ -103,22 +103,21 @@ def train():
         logger.info(init)
         logger.info("model ready")
 
-        gen_pl_dict = game_model.GameModel.create_placeholder(1)
-        eval_game_obj = game_model.GameModel(1, gen_pl_dict, game_obj.get_params_dict())
-
-        gen_actions_q, _, _ = eval_game_obj.generate_action_q("eval")
-        pool = game_pool.GamePool(500000, sess, gen_pl_dict, gen_actions_q, batch_size)
-        logger.info("gen graph ready")  
+        eval_game_obj = game_model.GameModel("eval", 1, params_dict=game_obj.get_params_dict())
+        pool = game_pool.GamePool(500000, sess, eval_game_obj)
+        logger.info("gen graph ready")
         sess.run(init)
         stat_info = pool.get_stat_info()
+        pool.generate_training_data()
         for i in xrange(total_iteration):
             total_loss_value = 0.0
             start_time = time.time()
+            pool.generate_training_data()
             for p in xrange(epoch_size):
-                feed_dict = pool.create_external_feed_dict(pl_dict)
+                feed_dict = pool.create_external_feed_dict(game_obj.get_pl_dict(), game_obj.get_batch_size())
                 # Core training function.
-                _, epoch_loss_value, learning_rate_value, debug_value = \
-                    sess.run([train_op, epoch_loss, learning_rate, debug_tensor],
+                _, epoch_loss_value, learning_rate_value = \
+                    sess.run([train_op, epoch_loss, learning_rate],
                              feed_dict=feed_dict)
                 total_loss_value = total_loss_value + epoch_loss_value
             logger.info('time:%.3fs e_s:%d, e_n:%d lr:%.5f average_loss:%.3f' % (
@@ -129,10 +128,9 @@ def train():
                  total_loss_value / float(epoch_size)))
             #print debug_value
             if i % 1000 == 0:
+                saver.export_meta_graph('%s/checkpoint/%s/model.meta' % (FLAGS.output_path, FLAGS.exp_name))
                 saver.save(sess,
-                           '%s/checkpoint/%s-model.ckpt' % (FLAGS.output_path, FLAGS.exp_name),
-                           global_step=global_step,
-                           latest_filename='%s-model.checkpoint' % FLAGS.exp_name)
+                           '%s/checkpoint/%s/model.ckpt' % (FLAGS.output_path, FLAGS.exp_name))
                 logger.info("Training model saved")
             if i % 10 == 0:
                 summary_str = sess.run(summary_op, feed_dict=feed_dict)

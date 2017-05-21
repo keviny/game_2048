@@ -2,7 +2,7 @@ import argparse
 import game
 import logging
 import numpy as np
-import game_model as model
+import game_model
 import sys
 import tensorflow as tf
 
@@ -15,29 +15,33 @@ parser.add_argument(
 
 parser.add_argument('--use_ai', help="choose to use ai", action="store_true", default=False)
 
-parser.add_argument('--model_path') 
+parser.add_argument('--model_path')
 
 parser.add_argument('--log_name', default='game.log')
 
-args = parser.parse_args()  
+parser.add_argument('--exp_name', help="choose to use ai", default='d1')
+
+
+args = parser.parse_args()
 
 logging.basicConfig(filename=args.log_name, level=args.loglevel)
 
 
 class GameSimulator(object):
-  def __init__(self, model_path, use_ai=True):
-    self.params_dict = model.create_game_params_dict()
-    self.target_board_pl = tf.placeholder(tf.float32, shape=(1, 4, 4, 1))
-    self.saver = tf.train.Saver()
+  def __init__(self, model_path, use_ai=True, exp_name="d1"):
+    self.model = game_model.GameModel("train", 1)
+    self.target_board_q = self.model.get_internal_variable().get("action_q")
     self.sess = tf.Session()
-    self.target_board_q, _, _ = model.generate_game_q(
-        self.target_board_pl, self.params_dict, 1, 'evaluate_board')
-    self.saver.restore(self.sess, model_path)
+    self.sess.run(tf.global_variables_initializer())
+    print self.sess.run(self.model.get_params_dict().get("model_conv1_weights"))
+    self.saver = tf.train.import_meta_graph(model_path + "%s/model.meta" % exp_name)
+    self.saver.restore(self.sess, model_path + "%s/model.ckpt" % exp_name)
     self._use_ai = use_ai
-    
+    print self.sess.run(self.model.get_params_dict().get("model_conv1_weights"))
+
   def eval(self, eval_board):
       """
-      This function calcuates the possbile value of next step and 
+      This function calcuates the possbile value of next step and
       and returns max value of the sum of q value and incrmental score.
       """
       internal_game = game.Game()
@@ -45,7 +49,6 @@ class GameSimulator(object):
       internal_game.random_gen()
       raw_directions = internal_game.get_valid_directions(False)
       board_score_dict = internal_game.get_next_boards(raw_directions)
-      logging.debug(board_score_dict)
       valid_directions = filter(lambda x: x != -1, raw_directions)
       next_total_score = []
       for direction in [game.Direction.left,
@@ -57,12 +60,19 @@ class GameSimulator(object):
               next_total_score.append(-sys.maxint)
               continue
           move_board, move_score = board_score_dict[direction]
+          max_board = max(move_board)
           if self._use_ai == False:
             next_total_score.append(move_score)
           else:
             board_q_value = self.sess.run(
                 [self.target_board_q],
-                feed_dict={self.target_board_pl: np.array(move_board).reshape(1, 4, 4, 1).astype(float)})
+                feed_dict={
+                  self.model.get_pl_dict().get("c_b"): np.array(move_board).reshape(1, 4, 4, 1).astype(float),
+                  self.model.get_pl_dict().get("c_m"): np.array(max_board).reshape(1, 1).astype(float),
+                  #self.model.get_pl_dict().get("c_r"): np.array([1.0]).reshape(1, 1).astype(float),
+                  #self.model.get_pl_dict().get("c_a"): np.array([1.0, 1.0, 1.0, 1.0]).reshape(1, 4).astype(float),
+                  self.model.get_pl_dict().get("dropout_keep_prob"): 1.0
+                  })
             # Adds the q value of next step board and incrmental score
             next_total_score.append(board_q_value[0][0][0] + move_score)
       return max(next_total_score), next_total_score
@@ -95,7 +105,7 @@ class GameSimulator(object):
       return target_move, next_total_score, next_move_score
 
 if __name__ == "__main__":
-  simulator = GameSimulator(args.model_path, args.use_ai)
+  simulator = GameSimulator(args.model_path, args.use_ai, args.exp_name)
   for x in xrange(100):
     target_game = game.Game()
     while len(target_game.get_valid_directions()) > 0:
@@ -104,7 +114,7 @@ if __name__ == "__main__":
       move_direction, first_layer_score, second_layer_score = simulator.move(target_game.get_board())
       target_game.move(move_direction)
       logging.debug("%s %s" % (first_layer_score, second_layer_score))
-    log_content = "%d:%f:%d" % (target_game.get_action_counter(), target_game.get_score(), target_game.get_max())
+    log_content = "%d:%f" % (target_game.get_action_counter(), target_game.get_score())
     logging.info("Final result: %05d %s" % (x, log_content))
     print "Final result: %05d %s" % (x, log_content)
     target_game.display()

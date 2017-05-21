@@ -14,17 +14,19 @@ class GameModel(object):
       batch_size is the size of row will be processed in batch.
       action_number is the number of output in the model.
     """
-    def __init__(self, batch_size, pl_dict=None, params_dict=None):
+    def __init__(self, name, batch_size, pl_dict=None, params_dict=None):
+        self._name = name
         self._action_number = 4
-        self._memory_length = 4
         self._batch_size = batch_size
-        # If no input, creates the internal variable, otherwise uses input value.
-        self._pl_dict = pl_dict if pl_dict else GameModel.create_placeholder(batch_size)
-        self._params_dict = params_dict if params_dict else GameModel.create_game_params_dict(self._action_number)
-        self._internal_variable = []
 
-    @staticmethod
-    def create_placeholder(batch_size):
+        # If no input, creates the internal variable, otherwise uses input value.
+        self._pl_dict = pl_dict if pl_dict else self.create_placeholder(self._batch_size)
+        self._params_dict = params_dict if params_dict else self.create_game_params_dict(self._action_number)
+
+        # Start to build the internal model.
+        self._internal_variable = self.generate_action_q()
+
+    def create_placeholder(self, batch_size):
         """Creates the pl dict needed for the computing graph.
 
         Args:
@@ -40,10 +42,10 @@ class GameModel(object):
         # c_a -> current action, the current movement direction.
         # dropout_keep_prod -> dropout keep probability.
         pl_dict = {'c_b': tf.placeholder(tf.float32,
-                                         shape=(batch_size, 4, 4, 4),
+                                         shape=(batch_size, 4, 4, 1),
                                          name='c_b'),
                    'c_m': tf.placeholder(tf.float32,
-                                         shape=(batch_size, 4),
+                                         shape=(batch_size, 1),
                                          name='c_m'),
                    'c_r': tf.placeholder(tf.float32,
                                          shape=(batch_size, 1),
@@ -54,15 +56,14 @@ class GameModel(object):
                    'dropout_keep_prob': tf.placeholder(tf.float32)}
         return pl_dict
 
-    @staticmethod
-    def create_game_params_dict(action_number):
+    def create_game_params_dict(self, action_number):
         """Generate the model parameters in the Q NN.
 
         Those parameters will be shared to calculate the Q value.
         """
         params_dict = {
             'model_conv1_weights': tf.get_variable('model_conv1_weights',
-                                                   shape=[4, 4, 4, 128],
+                                                   shape=[4, 4, 1, 128],
                                                    initializer=tf.truncated_normal_initializer(
                                                        mean=0.0, stddev=0.01)),
             'model_conv1_biases': tf.get_variable('model_conv1_biases',
@@ -87,7 +88,7 @@ class GameModel(object):
                                                        mean=0.0, stddev=0.01)),
             # Below is the output layer, the size should be decided by the number of action.
             'model_matmul4_weights': tf.get_variable('model_matmul4_weights',
-                                                     [68, action_number],
+                                                     [65, action_number],
                                                      tf.float32,
                                                      initializer=tf.truncated_normal_initializer(
                                                          mean=0.0, stddev=0.01)),
@@ -97,6 +98,7 @@ class GameModel(object):
                                                     initializer=tf.truncated_normal_initializer(
                                                          mean=0.0, stddev=1/32.0))
         }
+
         return params_dict
 
     def get_unifrom_regularization(self):
@@ -127,7 +129,7 @@ class GameModel(object):
         current_q, _, _ = generate_game_q(target_pl_dict, params_dict, 1, 'evaluate_board')
         return current_q
 
-    def generate_action_q(self, name="board"):
+    def generate_action_q(self):
         """
         Use the game board as the input. The input is [batch_size, 4, 4, 1]
         Args:
@@ -146,13 +148,15 @@ class GameModel(object):
         max_pl = self._pl_dict['c_m']
         dropout_keep_prob = self._pl_dict['dropout_keep_prob']
 
-        with tf.variable_scope('%s_conv1' % name) as scope:
+        internal_variable = {}
+
+        with tf.variable_scope('%s_conv1' % self._name) as scope:
             kernel1 = self._params_dict.get('model_conv1_weights')
             conv1 = tf.nn.conv2d(board_pl, kernel1, [1, 1, 1, 1], padding='SAME')
             biases1 = self._params_dict.get('model_conv1_biases')
             sum_value1 = tf.nn.bias_add(conv1, biases1)
-            layer1_output = tf.nn.relu(sum_value1)
-            self._internal_variable.append(conv1)
+            layer1_output = tf.nn.relu(sum_value1, "layer1_output")
+            internal_variable[layer1_output.name] = layer1_output
 
         #layer1_output = tf.Print(layer1_output,
         #                         [layer1_output, kernel1, board_pl],
@@ -162,13 +166,13 @@ class GameModel(object):
         # norm1 = tf.nn.lrn(layer1_output, 2, bias=1.0, alpha=0.1 / 9.0, beta=0.75, name='norm1')
 
         # conv2, output is [batch_size, 4, 4, 64]
-        with tf.variable_scope('%s_conv2' % name) as scope:
+        with tf.variable_scope('%s_conv2' % self._name) as scope:
             kernel2 = self._params_dict.get('model_conv2_weights')
             conv2 = tf.nn.conv2d(layer1_output, kernel2, [1, 1, 1, 1], padding='SAME')
             biases2 = self._params_dict.get('model_conv2_biases')
             sum_value2 = tf.nn.bias_add(conv2, biases2)
-            layer2_output = tf.nn.relu(sum_value2)
-            self._internal_variable.append(conv2)
+            layer2_output = tf.nn.relu(sum_value2, "layer2_output")
+            internal_variable[layer2_output.name] = layer2_output
 
         # The output size is same as input. [batch_size, 4, 4, 128]
         # norm2 = tf.nn.lrn(layer2_output, 2, bias=1.0, alpha=0.1 / 9.0, beta=0.75, name='norm2')
@@ -183,7 +187,7 @@ class GameModel(object):
 
         # local3
         # weight is [128 * 4, 128] output is [batch_size, 128]
-        with tf.variable_scope('%s_local3' % name) as scope:
+        with tf.variable_scope('%s_local3' % self._name) as scope:
             # Move everything into depth so we can perform a single matrix multiply.
             reshape3 = tf.reshape(pool2, [self._batch_size, 4 * 64])
             dropout_reshape3 = tf.nn.dropout(reshape3, dropout_keep_prob)
@@ -191,60 +195,54 @@ class GameModel(object):
             biases3 = self._params_dict.get('model_local3_biases')
             matmul_value = tf.matmul(dropout_reshape3, weights3) + biases3
             layer3_rule = tf.nn.relu(matmul_value)
-            layer3_output = tf.concat(axis=1, values=[layer3_rule, max_pl])
-            self._internal_variable.append(layer3_rule)
-
+            layer3_output = tf.concat(axis=1, values=[layer3_rule, max_pl], name="layer3_output")
+            internal_variable[layer3_output.name] = layer3_output
 
         # matmul4
         # weight is [128, 4], output is [batch_size, 4]
-        with tf.variable_scope('%s_matmul4' % name) as scope:
+        with tf.variable_scope('%s_matmul4' % self._name) as scope:
             weights4 = self._params_dict.get('model_matmul4_weights')
             biases4 = self._params_dict.get('model_matmul4_biases')
-            expected_q = tf.matmul(layer3_output, weights4) + biases4
-            self._internal_variable.append(expected_q)
+            layer4_output = tf.add(tf.matmul(layer3_output, weights4), biases4, name="layer4_output")
+            internal_variable[layer4_output.name] = layer4_output
             # expected_q = tf.nn.softmax(tf.matmul(layer3_output, weights4) + biases4)
             # _activation_summary(softmax_linear)
-
+        # Save the model in a specific name.
+        internal_variable["action_q"] = layer4_output
         # output the final data, [batch_size, ACTION_NUMBER]
         # The first return value is useful, the second and third is for debugging.
         # params_dict.get('model_conv1_weights')
         # expected_q = tf.Print(expected_q,[expected_q, layer3_output, layer2_output, layer1_output],'debug info: ', summarize=16)
         # expected_q = tf.Print(expected_q, [expected_q, params_dict.get('model_conv1_weights'), params_dict.get('model_conv1_biases')], "debug info:", summarize=16)
-        return expected_q, max_pl, layer3_output
+        return internal_variable
 
     def get_pl_dict(self):
-      return self._pl_dict
+        return self._pl_dict
 
     def get_params_dict(self):
-      return self._params_dict
+        return self._params_dict
+
+    def get_batch_size(self):
+        return self._batch_size;
 
     def get_internal_variable(self):
-      return self._internal_variable
+        return self._internal_variable
 
 if __name__ == "__main__":
-    gm = GameModel(2)
-    current_q, conv1, conv2 = gm.generate_action_q('evaluate_board')
+    gm = GameModel("train", 2)
+    current_q = gm.get_internal_variable().get("action_q")
     with tf.Session() as sess:
         init = tf.global_variables_initializer()
         print init
         sess.run(init)
         target_board = [32, 8, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 1,
-                        32, 8, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 2,
-                        32, 8, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 3,
-                        32, 8, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 4,
-                        32, 8, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 5,
-                        32, 8, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 6,
-                        32, 8, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 7,
-                        32, 8, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 8]
-        target_max = [2,3,4,5,6,7,8,9]
-        value = sess.run([current_q, conv1, conv2],
-            feed_dict={gm.get_pl_dict().get('c_b'): np.array(target_board).reshape(2, 4, 4, 4).astype(float),
-                       gm.get_pl_dict().get('c_m'): np.array(target_max).reshape(2,4).astype(float),
-                       gm.get_pl_dict().get('dropout_keep_prob'): 0.3})
-        print "q value:%s" % value[0]
-        print "extra1: %s" % value[1]
-        import pdb
-        pdb.set_trace()
-        print "extra2: %s" % value[2]
+                        32, 8, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 2]
+        target_max = [2,3]
+        print gm.get_pl_dict()
+        value = sess.run([current_q],
+                         feed_dict={gm.get_pl_dict().get('c_b'): np.array(target_board).reshape(2, 4, 4, 1).astype(float),
+                                    gm.get_pl_dict().get('c_m'): np.array(target_max).reshape(2,1).astype(float),
+                                    gm.get_pl_dict().get('dropout_keep_prob'): 0.3})
+        print "q value:%s" % value
 
 

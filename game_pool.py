@@ -9,7 +9,7 @@ class GamePool(object):
     MODEL_GENERATOR = 1
     RANDOM_GENERATOR = 2
 
-    def __init__(self, pool_size, sess, pl_dict, actions_q, batch_size):
+    def __init__(self, pool_size, sess, model):
         """
         The training data pool is a collection of each training record.
         Each training record is composed of (s0, a0, r0, s1)
@@ -24,12 +24,14 @@ class GamePool(object):
           actions_q: The q value tensor, which will be used if we need to generate the training data by ML model.
           batch_size: The number of record of each batch
         """
+        pl_dict = model.get_pl_dict()
+
         self._pl_board = pl_dict['c_b']
         self._dropout_keep_prob = pl_dict['dropout_keep_prob']
         self._pl_max = pl_dict['c_m']
         self._sess = sess
-        self._batch_size = batch_size
-        self._actions_q = actions_q
+        self._batch_size = model.get_batch_size()
+        self._actions_q = model.get_internal_variable().get("action_q")
         self._counter = 0
         self._hold_step = 10
 
@@ -51,6 +53,7 @@ class GamePool(object):
 
         # Reset the game if needed.
         self._game_obj.reset()
+
         current_max_element = float(max(self._game_obj.get_board()))
         current_board = np.array(self._game_obj.get_board()) / current_max_element
         current_max_element = float(max(current_board))
@@ -58,17 +61,15 @@ class GamePool(object):
         current_max_list = [current_max_element] * 4
 
         while not self._game_obj.is_end():
-            current_board_list_len = len(current_board_list)
-            np_current_board = np.array(current_board_list[current_board_list_len-4:])\
-                .reshape(1, 4, 4, 4).astype(float)
-            np_current_max = np.array(current_max_list[current_board_list_len-4:])\
-                .reshape(1, 4).astype(float)
+            np_current_board = np.array(current_board_list[-1]).reshape(1, 4, 4, 1).astype(float)
+            np_current_max = np.array(current_max_list[-1]).reshape(1, 1).astype(float)
             action_qs = self._sess.run([self._actions_q],
                                        feed_dict={
                                            self._pl_board: np_current_board,
                                            self._pl_max: np_current_max,
                                            self._dropout_keep_prob: 1.0
                                        })[0][0]
+            # use random move for some case.
             if random.random() > 0.01:
                 actions, inc = self._game_obj.score_move(action_qs)
             else:
@@ -81,17 +82,14 @@ class GamePool(object):
             current_board_list.append(current_board)
             current_max_list.append(current_max_element)
 
-            np_next_board = np.array(current_board_list[len(current_board_list) - 4:])\
-                .reshape(1, 4, 4, 4).astype(float)
-            np_next_max = np.array(current_max_list[len(current_max_list) - 4:])\
-                .reshape(1, 4).astype(float)
+            np_next_board = np.array(current_board_list[-1]).reshape(1, 4, 4, 1).astype(float)
+            np_next_max = np.array(current_max_list[-1]).reshape(1, 1).astype(float)
             next_action_qs = self._sess.run([self._actions_q],
                                             feed_dict={
                                                 self._pl_board: np_next_board,
                                                 self._pl_max: np_next_max,
                                                 self._dropout_keep_prob: 1.0
                                             })[0][0]
-
 
             if self._game_obj.is_end():
                 self._training_node_pool.append(
@@ -130,20 +128,16 @@ class GamePool(object):
     def get_pool(self):
         return self._training_node_pool
 
-    def create_external_feed_dict(self, pl_dict):
+    def create_external_feed_dict(self, pl_dict, batch_size):
         """Creates the feed dict for the run process."""
-        self.generate_training_data()
-        self.generate_training_data()
-
-        batch_nodes = random.sample(self._training_node_pool,
-                                    self._batch_size)
+        batch_nodes = random.sample(self._training_node_pool, batch_size)
         concat_nodes = self.__concat_nodes(batch_nodes)
 
         feed_dict = {
-          pl_dict['c_b']: np.array(concat_nodes[0]).reshape(self._batch_size, 4, 4, 4).astype(float),
-          pl_dict['c_m']: np.array(concat_nodes[1]).reshape(self._batch_size, 4).astype(float),
-          pl_dict['c_a']: np.array(concat_nodes[2]).reshape(self._batch_size, 4).astype(float),
-          pl_dict['c_r']: np.array(concat_nodes[3]).reshape(self._batch_size, 1).astype(float),
+          pl_dict['c_b']: np.array(concat_nodes[0]).reshape(batch_size, 4, 4, 1).astype(float),
+          pl_dict['c_m']: np.array(concat_nodes[1]).reshape(batch_size, 1).astype(float),
+          pl_dict['c_a']: np.array(concat_nodes[2]).reshape(batch_size, 4).astype(float),
+          pl_dict['c_r']: np.array(concat_nodes[3]).reshape(batch_size, 1).astype(float),
           pl_dict['dropout_keep_prob']: 1.0,
         }
         return feed_dict

@@ -4,7 +4,6 @@ import logging
 import numpy as np
 import game_model
 import random
-import time
 import tensorflow as tf
 
 parser = argparse.ArgumentParser()
@@ -18,7 +17,7 @@ parser.add_argument('--use_ai', help="choose to use ai", action="store_true", de
 
 parser.add_argument('--model_path')
 
-parser.add_argument('--log_name', default='game.log')
+parser.add_argument('--log_name', default='/tmp/game.log')
 
 parser.add_argument('--exp_name', help="choose to use ai", default='d1')
 
@@ -28,45 +27,46 @@ logging.basicConfig(filename=args.log_name, level=args.loglevel)
 
 
 class GameSimulator(object):
-  def __init__(self, game, model_path, use_ai=True, exp_name="d1"):
-    self.game = game
-    self.model = game_model.GameModel("train", 1)
-    self.target_board_q = self.model.get_internal_variable().get("action_q")
-    self.sess = tf.Session()
+  def __init__(self, game_instance, model_path, use_ai=True, exp_name="d1"):
+    self._game_instance = game_instance
+    self._game_model = game_model.GameModel("train", 1)
+    self._target_board_q = self._game_model.get_internal_variable().get("action_q")
+    self._sess = tf.Session()
     self._use_ai = use_ai
 
+    # Load the existing model.
     saver = tf.train.Saver()
     ckpt = tf.train.get_checkpoint_state(model_path + exp_name)
-    saver.restore(self.sess, ckpt.model_checkpoint_path)
+    saver.restore(self._sess, ckpt.model_checkpoint_path)
 
   def eval(self):
-    board_q_value = self.sess.run(
-          [self.target_board_q],
+    board_q_value = self._sess.run(
+          [self._target_board_q],
           feed_dict={
-            self.model.get_pl_dict().get("c_b"): np.array(self.game.get_board()).reshape(1, 4, 4, 1).astype(float),
-            self.model.get_pl_dict().get("c_m"): np.array(max(self.game.get_board())).reshape(1, 1).astype(float),
-            self.model.get_pl_dict().get("dropout_keep_prob"): 1.0
+            self._game_model.get_pl_dict().get("c_b"): np.array(self._game_instance.get_board()).reshape(1, 4, 4, 1).astype(float),
+            self._game_model.get_pl_dict().get("c_m"): np.array(max(self._game_instance.get_board())).reshape(1, 1).astype(float),
+            self._game_model.get_pl_dict().get("dropout_keep_prob"): 1.0
           })
     return board_q_value[0][0]
 
   def get_game(self):
-    return self.game;
+    return self._game_instance;
 
   def move(self):
-    raw_directions = self.game.get_valid_directions(False)
-    board_score_dict = self.game.get_next_boards(raw_directions)
+    raw_directions = self._game_instance.get_valid_directions(False)
+    board_score_dict = self._game_instance.get_next_boards(raw_directions)
     if self._use_ai:
       next_score_list = self.eval()
     else:
       next_score_list = map(lambda k: board_score_dict[k][1], board_score_dict)[0:4]
     # max score must be in the set of valid direction.
-    max_score = max(map(lambda i: next_score_list[i], self.game.get_valid_directions()))
+    max_score = max(map(lambda i: next_score_list[i], self._game_instance.get_valid_directions()))
     max_direction = []
     for i in xrange(0, 4):
       # The direction must be valid direction.
-      if i in self.game.get_valid_directions() and abs(next_score_list[i] - max_score) < 0.0001:
+      if i in self._game_instance.get_valid_directions() and abs(next_score_list[i] - max_score) < 0.0001:
         max_direction.append(i)
-    self.game.move(random.choice(max_direction))
+    self._game_instance.move(random.choice(max_direction))
 
 
 if __name__ == "__main__":

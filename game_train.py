@@ -26,6 +26,7 @@ handler = logging.handlers.RotatingFileHandler(
     '%s/log/%s.log' % (FLAGS.output_path, FLAGS.exp_name),
     maxBytes = 1024*1024,
     backupCount = 5)
+
 fmt = '%(asctime)s - %(name)s - %(message)s'
 formatter = logging.Formatter(fmt)
 handler.setFormatter(formatter)
@@ -103,6 +104,7 @@ def train():
         logger.info(init)
         logger.info("model ready")
 
+        # Creates the game object, using the existing model.
         eval_game_obj = game_model.GameModel("eval", 1, params_dict=game_obj.get_params_dict())
         pool = game_pool.GamePool(500000, sess, eval_game_obj)
         logger.info("gen graph ready")
@@ -126,11 +128,12 @@ def train():
                  i,
                  learning_rate_value,
                  total_loss_value / float(epoch_size)))
-            #print debug_value
-            if i % 1000 == 0:
+
+            if i % 300 == 0:
                 saver.export_meta_graph('%s/checkpoint/%s/model.meta' % (FLAGS.output_path, FLAGS.exp_name))
                 saver.save(sess,
-                           '%s/checkpoint/%s/model.ckpt' % (FLAGS.output_path, FLAGS.exp_name))
+                           '%s/checkpoint/%s/model.ckpt' % (FLAGS.output_path, FLAGS.exp_name),
+                           global_step=global_step)
                 logger.info("Training model saved")
             if i % 10 == 0:
                 summary_str = sess.run(summary_op, feed_dict=feed_dict)

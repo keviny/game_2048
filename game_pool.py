@@ -162,7 +162,7 @@ if __name__ == "__main__":
     with tf.Session() as sess:
         model = game_model.GameModel(batch_size)
         actions_q, conv1, conv2 = model.generate_action_q("train")
-        init = tf.initialize_all_variables()
+        init = tf.global_variables_initializer()
         sess.run(init)
         pool = GamePool(10000, sess, model.get_pl_dict(), actions_q, batch_size)
         pool.generate_training_data()

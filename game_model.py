@@ -191,7 +191,7 @@ class GameModel(object):
             biases3 = self._params_dict.get('model_local3_biases')
             matmul_value = tf.matmul(dropout_reshape3, weights3) + biases3
             layer3_rule = tf.nn.relu(matmul_value)
-            layer3_output = tf.concat(1, [layer3_rule, max_pl])
+            layer3_output = tf.concat(axis=1, values=[layer3_rule, max_pl])
             self._internal_variable.append(layer3_rule)
 
 
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     gm = GameModel(2)
     current_q, conv1, conv2 = gm.generate_action_q('evaluate_board')
     with tf.Session() as sess:
-        init = tf.initialize_all_variables()
+        init = tf.global_variables_initializer()
         print init
         sess.run(init)
         target_board = [32, 8, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 1,

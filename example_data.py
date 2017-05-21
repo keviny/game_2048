@@ -7,7 +7,7 @@ def read_csv_format(filename_queue):
   record_defaults = [[1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1.0], [1]]
   col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11 = tf.decode_csv(
       value, record_defaults=record_defaults)
-  feature = tf.pack([col1, col2, col3, col4, col5, col6, col7, col8, col9, col10])
+  feature = tf.stack([col1, col2, col3, col4, col5, col6, col7, col8, col9, col10])
   label = col11
   return feature, label
 
@@ -30,7 +30,7 @@ if __name__=="__main__":
   filename_queue = tf.FIFOQueue(capacity=4, dtypes=[tf.string])
   #config = tf.ConfigProto(log_device_placement=True)
   #config.set_operation_timeout_in_ms(1500)   # terminate on long hangs
-  init_op = tf.initialize_all_variables()
+  init_op = tf.global_variables_initializer()
   config = tf.ConfigProto(inter_op_parallelism_threads=2)
   with tf.Session(config=config) as sess:
     sess.run(init_op)

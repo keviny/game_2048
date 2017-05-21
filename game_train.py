@@ -71,7 +71,7 @@ def train():
         # pl_dict['c_a'] -> (batch_size, 4)
         # action_q -> (batch_size, 4)
         # The output of multiply will be (batch_size, 4), reduce_sum will output (batch_size, 4)
-        expacted_reward = tf.reduce_sum(tf.multiply(actions_q, pl_dict['c_a']), reduction_indices=1)
+        expacted_reward = tf.reduce_sum(tf.multiply(actions_q, pl_dict['c_a']), axis=1)
         # Generate the sum of average diff and plus the reg to calculate the epoch loss.
         epoch_loss = tf.reduce_mean(tf.abs(expacted_reward - pl_dict['c_r'])) + regularization * 0.1;
         epoch_loss_op = scalar_summary_detail('epoch_loss', epoch_loss, averages)
@@ -99,7 +99,7 @@ def train():
         summary_op = tf.summary.merge_all()
         summary_writer = SummaryWriter('%s/summary/%s/' % (FLAGS.output_path, FLAGS.exp_name), sess.graph)
         saver = tf.train.Saver(max_to_keep=100)
-        init = tf.initialize_all_variables()
+        init = tf.global_variables_initializer()
         logger.info(init)
         logger.info("model ready")
 

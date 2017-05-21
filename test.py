@@ -33,7 +33,7 @@ experience_runner = tf.train.QueueRunner(
   experience, [perceive(game_list[num]) for num in range(available_threads)])
 
 sess = tf.Session()
-sess.run(tf.initialize_all_variables())
+sess.run(tf.global_variables_initializer())
 enqueue_threads = experience_runner.create_threads(sess, coord = coord, start = True)
 
 with sess.as_default():

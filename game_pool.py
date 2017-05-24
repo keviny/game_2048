@@ -20,18 +20,12 @@ class GamePool(object):
         Args:
           pool_size: The number of record this pool could contain
           sess: Session variable.
-          pl_dict: MODEL_GENERATOR (1) or RANDOM_GENERATOR (2)
-          actions_q: The q value tensor, which will be used if we need to generate the training data by ML model.
-          batch_size: The number of record of each batch
+          model: The model object.
         """
-        pl_dict = model.get_pl_dict()
-
-        self._pl_board = pl_dict['c_b']
-        self._dropout_keep_prob = pl_dict['dropout_keep_prob']
-        self._pl_max = pl_dict['c_m']
         self._sess = sess
         self._batch_size = model.get_batch_size()
-        self._actions_q = model.get_internal_variable().get("action_q")
+        self._actions_q = model.get_internal_variable().get("current_q")
+        self._model = model
         self._counter = 0
         self._hold_step = 10
 
@@ -61,45 +55,31 @@ class GamePool(object):
         current_max_list = [current_max_element] * 4
 
         while not self._game_obj.is_end():
-            np_current_board = np.array(current_board_list[-1]).reshape(1, 4, 4, 1).astype(float)
-            np_current_max = np.array(current_max_list[-1]).reshape(1, 1).astype(float)
-            action_qs = self._sess.run([self._actions_q],
-                                       feed_dict={
-                                           self._pl_board: np_current_board,
-                                           self._pl_max: np_current_max,
-                                           self._dropout_keep_prob: 1.0
-                                       })[0][0]
+            current_board = np.array(self._game_obj.get_board()) / current_max_element
+            current_max_element = float(max(self._game_obj.get_board()))
+            current_board_list.append(current_board)
+            current_max_list.append(current_max_element)
+
+            feed_dict = self._model.create_feed_dict(1, current_board, None, None, None)
+            # self._sess.run([self._actions_q], feed_dict=feed_dict)
+            action_qs = self._sess.run([self._actions_q], feed_dict=feed_dict)[0][0]
             # use random move for some case.
-            if random.random() > 0.01:
+            if random.random() > 0.1:
                 actions, inc = self._game_obj.score_move(action_qs)
             else:
                 actions, inc = self._game_obj.random_move()
 
-            current_max_element = float(max(self._game_obj.get_board()))
-            current_board = np.array(self._game_obj.get_board()) / current_max_element
-
-            # float(max(current_board)
-            current_board_list.append(current_board)
-            current_max_list.append(current_max_element)
-
-            np_next_board = np.array(current_board_list[-1]).reshape(1, 4, 4, 1).astype(float)
-            np_next_max = np.array(current_max_list[-1]).reshape(1, 1).astype(float)
-            next_action_qs = self._sess.run([self._actions_q],
-                                            feed_dict={
-                                                self._pl_board: np_next_board,
-                                                self._pl_max: np_next_max,
-                                                self._dropout_keep_prob: 1.0
-                                            })[0][0]
-
             if self._game_obj.is_end():
                 self._training_node_pool.append(
-                    [np_current_board, np_current_max, actions, 0, self._game_obj.get_score()])
+                    [current_board, self._game_obj.get_board(), actions, self._game_obj.get_score(), -10000])
             else:
                 self._training_node_pool.append(
-                    [np_current_board, np_current_max, actions, max(next_action_qs), inc])
+                    [current_board, self._game_obj.get_board(), actions, max(action_qs), inc])
+
             if random.random() < 0.00001:
                 print "For debug: " + str(self._training_node_pool[-1])
 
+        # For stats
         self._game_step_pool.append(self._game_obj.get_action_counter())
         self._game_score_pool.append(self._game_obj.get_score())
 
@@ -128,18 +108,17 @@ class GamePool(object):
     def get_pool(self):
         return self._training_node_pool
 
-    def create_external_feed_dict(self, pl_dict, batch_size):
+    def create_external_feed_dict(self, game_model_instance):
         """Creates the feed dict for the run process."""
-        batch_nodes = random.sample(self._training_node_pool, batch_size)
+        batch_nodes = random.sample(self._training_node_pool, game_model_instance.get_batch_size())
         concat_nodes = self.__concat_nodes(batch_nodes)
 
-        feed_dict = {
-          pl_dict['c_b']: np.array(concat_nodes[0]).reshape(batch_size, 4, 4, 1).astype(float),
-          pl_dict['c_m']: np.array(concat_nodes[1]).reshape(batch_size, 1).astype(float),
-          pl_dict['c_a']: np.array(concat_nodes[2]).reshape(batch_size, 4).astype(float),
-          pl_dict['c_r']: np.array(concat_nodes[3]).reshape(batch_size, 1).astype(float),
-          pl_dict['dropout_keep_prob']: 1.0,
-        }
+        feed_dict = game_model_instance.create_feed_dict(
+            game_model_instance.get_batch_size(),
+            concat_nodes[0],
+            concat_nodes[1],
+            concat_nodes[2],
+            concat_nodes[3])
         return feed_dict
 
     # Concatenated the nodes and return each concatenated fields separated.
@@ -147,7 +126,7 @@ class GamePool(object):
         return map(lambda x: x[0], batch_nodes), \
                map(lambda x: x[1], batch_nodes), \
                map(lambda x: x[2], batch_nodes), \
-               map(lambda x: x[3] + x[4], batch_nodes)
+               map(lambda x: x[3], batch_nodes)
 
 if __name__ == "__main__":
     import game_model
@@ -155,7 +134,7 @@ if __name__ == "__main__":
     batch_size = 1
     with tf.Session() as sess:
         model = game_model.GameModel(batch_size)
-        actions_q, conv1, conv2 = model.generate_action_q("train")
+        actions_q, _, _ = model.generate_action_q("train")
         init = tf.global_variables_initializer()
         sess.run(init)
         pool = GamePool(10000, sess, model.get_pl_dict(), actions_q, batch_size)

@@ -40,13 +40,9 @@ class GameSimulator(object):
     saver.restore(self._sess, ckpt.model_checkpoint_path)
 
   def eval(self):
-    board_q_value = self._sess.run(
-          [self._target_board_q],
-          feed_dict={
-            self._game_model.get_pl_dict().get("c_b"): np.array(self._game_instance.get_board()).reshape(1, 4, 4, 1).astype(float),
-            self._game_model.get_pl_dict().get("c_m"): np.array(max(self._game_instance.get_board())).reshape(1, 1).astype(float),
-            self._game_model.get_pl_dict().get("dropout_keep_prob"): 1.0
-          })
+    feed_dict = self._game_model.create_feed_dict(
+      1, self._game_instance.get_board(), max(self._game_instance.get_board(), None, None))
+    board_q_value = self._sess.run([self._target_board_q], feed_dict=feed_dict)
     return board_q_value[0][0]
 
   def get_game(self):

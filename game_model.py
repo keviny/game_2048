@@ -61,34 +61,36 @@ class GameModel(object):
 
         Those parameters will be shared to calculate the Q value.
         """
+        layer1_output = 128
+        layer2_output = 64
         params_dict = {
-            'model_conv1_weights': tf.get_variable('model_conv1_weights',
-                                                   shape=[16, 1024],
-                                                   initializer=tf.truncated_normal_initializer(
-                                                       mean=0.0, stddev=0.01)),
-            'model_conv1_biases': tf.get_variable('model_conv1_biases',
-                                                  shape=[1024],
-                                                  initializer=tf.truncated_normal_initializer(
-                                                      mean=0.0, stddev=0.01)),
-            'model_conv2_weights': tf.get_variable('model_conv2_weights',
-                                                   shape=[1024, 512],
-                                                   initializer=tf.truncated_normal_initializer(
-                                                       mean=0.0, stddev=0.01)),
-            'model_conv2_biases': tf.get_variable('model_conv2_biases',
-                                                  shape=[512],
-                                                  initializer=tf.truncated_normal_initializer(
-                                                      mean=0.0, stddev=0.01)),
-            'model_local3_weights': tf.get_variable('model_local3_weights',
-                                                    shape=[512, 256],
-                                                    initializer=tf.truncated_normal_initializer(
-                                                        mean=0.0, stddev=0.01)),
-            'model_local3_biases': tf.get_variable('model_local3_biases',
-                                                   shape=[256],
-                                                   initializer=tf.truncated_normal_initializer(
-                                                       mean=0.0, stddev=0.01)),
+            'layer1_1_2_conv_weights': tf.get_variable('layer1_1_2_conv_weights',
+                                                       shape=[1, 2, 1, layer1_output],
+                                                       initializer=tf.truncated_normal_initializer(
+                                                          mean=0.0, stddev=0.01)),
+            'layer1_2_1_conv_weights': tf.get_variable('layer1_2_1_conv_weights',
+                                                       shape=[2, 1, 1, layer1_output],
+                                                       initializer=tf.truncated_normal_initializer(
+                                                          mean=0.0, stddev=0.01)),
+            'layer2_1_2_1_2_conv_weights': tf.get_variable('layer2_1_2_1_2_conv_weights',
+                                                       shape=[1, 2, layer1_output, layer2_output],
+                                                       initializer=tf.truncated_normal_initializer(
+                                                           mean=0.0, stddev=0.01)),
+            'layer2_1_2_2_1_conv_weights': tf.get_variable('layer2_1_2_2_1_conv_weights',
+                                                       shape=[2, 1, layer1_output, layer2_output],
+                                                       initializer=tf.truncated_normal_initializer(
+                                                           mean=0.0, stddev=0.01)),
+            'layer2_2_1_1_2_conv_weights': tf.get_variable('layer2_2_1_1_2_conv_weights',
+                                                       shape=[1, 2, layer1_output, layer2_output],
+                                                       initializer=tf.truncated_normal_initializer(
+                                                           mean=0.0, stddev=0.01)),
+            'layer2_2_1_2_1_conv_weights': tf.get_variable('layer2_2_1_2_1_conv_weights',
+                                                       shape=[2, 1, layer1_output, layer2_output],
+                                                       initializer=tf.truncated_normal_initializer(
+                                                           mean=0.0, stddev=0.01)),
             # Below is the output layer, the size should be decided by the number of action.
             'model_matmul4_weights': tf.get_variable('model_matmul4_weights',
-                                                     [256, action_number],
+                                                     [layer2_output * (8 + 9) * 2 + layer1_output * (12 + 12), action_number],
                                                      tf.float32,
                                                      initializer=tf.truncated_normal_initializer(
                                                          mean=0.0, stddev=0.01)),
@@ -166,43 +168,38 @@ class GameModel(object):
 
         internal_variable = {}
 
-        with tf.variable_scope('%s_conv1' % self._name) as scope:
-            weight1 = self._params_dict.get('model_conv1_weights')
-            biases1 = self._params_dict.get('model_conv1_biases')
-            conv1 = tf.matmul(tf.reshape(board_pl, [self._batch_size, 16]), weight1)
-            sum_value1 = tf.add(conv1, biases1)
-            layer1_output = tf.nn.relu(sum_value1, name="layer1_output")
+        layer1_1_2_conv_weights = self._params_dict.get('layer1_1_2_conv_weights')
+        layer1_2_1_conv_weights = self._params_dict.get('layer1_2_1_conv_weights')
 
-        #layer1_output = tf.Print(layer1_output,
-        #                         [layer1_output, kernel1, board_pl],
-        #                         summarize=16)
-        # norm1, output size is same as input
-        # http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf
-        # norm1 = tf.nn.lrn(layer1_output, 2, bias=1.0, alpha=0.1 / 9.0, beta=0.75, name='norm1')
+        layer2_1_2_1_2_conv_weights = self._params_dict.get('layer2_1_2_1_2_conv_weights')
+        layer2_1_2_2_1_conv_weights = self._params_dict.get('layer2_1_2_2_1_conv_weights')
 
-        # conv2, output is [batch_size, 4, 4, 64]
-        with tf.variable_scope('%s_conv2' % self._name) as scope:
-            kernel2 = self._params_dict.get('model_conv2_weights')
-            conv2 = tf.matmul(layer1_output, kernel2)
-            biases2 = self._params_dict.get('model_conv2_biases')
-            sum_value2 = tf.add(conv2, biases2)
-            layer2_output = tf.nn.relu(sum_value2, name="layer2_output")
+        layer2_2_1_1_2_conv_weights = self._params_dict.get('layer2_2_1_1_2_conv_weights')
+        layer2_2_1_2_1_conv_weights = self._params_dict.get('layer2_2_1_2_1_conv_weights')
 
-        # local3
-        # weight is [128 * 4, 128] output is [batch_size, 128]
-        with tf.variable_scope('%s_local3' % self._name) as scope:
-            weights3 = self._params_dict.get('model_local3_weights')
-            biases3 = self._params_dict.get('model_local3_biases')
-            matmul_value = tf.matmul(layer2_output, weights3) + biases3
-            layer3_output = tf.nn.relu(matmul_value, name="layer3_output")
+        model_matmul4_weights = self._params_dict.get('model_matmul4_weights')
+        model_matmul4_biases = self._params_dict.get('model_matmul4_biases')
 
-        # matmul4
-        # weight is [128, 4], output is [batch_size, 4]
-        with tf.variable_scope('%s_matmul4' % self._name) as scope:
-            weights4 = self._params_dict.get('model_matmul4_weights')
-            biases4 = self._params_dict.get('model_matmul4_biases')
-            layer4_output = tf.add(tf.matmul(layer3_output, weights4), biases4, name="layer4_output")
+        conv1_1_2 = tf.nn.conv2d(board_pl, layer1_1_2_conv_weights, strides=[1, 1, 1, 1], padding='VALID', name='conv1_1_2')
+        conv1_2_1 = tf.nn.conv2d(board_pl, layer1_2_1_conv_weights, strides=[1, 1, 1, 1], padding='VALID', name='conv1_2_1')
 
+        conv1_1_2_1_2 = tf.nn.conv2d(conv1_1_2, layer2_1_2_1_2_conv_weights, strides=[1, 1, 1, 1], padding='VALID')
+        conv1_1_2_2_1 = tf.nn.conv2d(conv1_1_2, layer2_1_2_2_1_conv_weights, strides=[1, 1, 1, 1], padding='VALID')
+
+        conv1_2_1_1_2 = tf.nn.conv2d(conv1_2_1, layer2_2_1_1_2_conv_weights, strides=[1, 1, 1, 1], padding='VALID')
+        conv1_2_1_2_1 = tf.nn.conv2d(conv1_2_1, layer2_2_1_2_1_conv_weights, strides=[1, 1, 1, 1], padding='VALID')
+
+        concated_input = tf.concat([
+          tf.reshape(conv1_1_2, [self._batch_size, -1]),
+          tf.reshape(conv1_2_1, [self._batch_size, -1]),
+          tf.reshape(conv1_1_2_1_2, [self._batch_size, -1]),
+          tf.reshape(conv1_1_2_2_1, [self._batch_size, -1]),
+          tf.reshape(conv1_2_1_1_2, [self._batch_size, -1]),
+          tf.reshape(conv1_2_1_2_1, [self._batch_size, -1])], 1)
+
+        conv_input = tf.reshape(concated_input, [self._batch_size, -1])
+
+        layer4_output = tf.add(tf.matmul(conv_input, model_matmul4_weights), model_matmul4_biases, name="layer4_output")
         action_q = layer4_output
 
         return action_q
@@ -234,8 +231,13 @@ class GameModel(object):
 
 if __name__ == "__main__":
     gm = GameModel("train", 2)
-    tensor = gm.get_internal_variable().get("loss")
+    gm.generate_model()
+    tensor = gm.get_internal_variable().get("raw_loss")
     tensor1 = gm.get_internal_variable().get("current_q")
+    print "AAAAAAAAAAAAAAAAAAAAA"
+    print tensor
+    print tensor1
+    print "AAAAAAAAAAAAAAAAAAAAA"
     with tf.Session() as sess:
         init = tf.global_variables_initializer()
         print init
@@ -247,12 +249,15 @@ if __name__ == "__main__":
         target_action = [[0, 0, 1, 0], [1, 0, 0, 0]]
         rev = [0, 1]
         print gm.get_pl_dict()
+        feed_dict=gm.create_feed_dict(
+            gm.get_batch_size(),
+            target_board,
+            next_board,
+            target_action,
+            rev)
+        print feed_dict
         value = sess.run([tensor, tensor1],
-                         feed_dict={gm.get_pl_dict().get('c_b'): np.array(target_board).reshape(2, 4, 4, 1).astype(float),
-                                    gm.get_pl_dict().get('n_b'): np.array(next_board).reshape(2, 4, 4, 1).astype(float),
-                                    gm.get_pl_dict().get('c_r'): np.array(rev).reshape(2, 1).astype(float),
-                                    gm.get_pl_dict().get('c_a'): np.array(target_action).reshape(2, 4).astype(float),
-                                    gm.get_pl_dict().get('dropout_keep_prob'): 0.3})
+                         feed_dict=feed_dict)
         print value[0]
         print value[1]
 

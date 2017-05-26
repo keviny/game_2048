@@ -48,17 +48,12 @@ class GamePool(object):
         # Reset the game if needed.
         self._game_obj.reset()
 
-        current_max_element = float(max(self._game_obj.get_board()))
-        current_board = np.array(self._game_obj.get_board()) / current_max_element
-        current_max_element = float(max(current_board))
-        current_board_list = [current_board] * 4
-        current_max_list = [current_max_element] * 4
+        current_board = np.array(self._game_obj.get_board())
+        current_board_list = [current_board, current_board, ]
 
         while not self._game_obj.is_end():
-            current_board = np.array(self._game_obj.get_board()) / current_max_element
-            current_max_element = float(max(self._game_obj.get_board()))
+            current_board = np.array(self._game_obj.get_board())
             current_board_list.append(current_board)
-            current_max_list.append(current_max_element)
 
             feed_dict = self._model.create_feed_dict(1, current_board, None, None, None)
             # self._sess.run([self._actions_q], feed_dict=feed_dict)
@@ -71,15 +66,14 @@ class GamePool(object):
 
             if self._game_obj.is_end():
                 self._training_node_pool.append(
-                    [current_board, self._game_obj.get_board(), actions, self._game_obj.get_score(), -10000])
+                    [current_board, self._game_obj.get_board(), actions, self._game_obj.get_score(), self._game_obj.get_score()])
             else:
                 self._training_node_pool.append(
-                    [current_board, self._game_obj.get_board(), actions, max(action_qs), inc])
-
+                    [current_board, self._game_obj.get_board(), actions, self._game_obj.get_score(), inc])
             if random.random() < 0.00001:
                 print "For debug: " + str(self._training_node_pool[-1])
 
-        # For stats
+        # For statsself._training_node_pool
         self._game_step_pool.append(self._game_obj.get_action_counter())
         self._game_score_pool.append(self._game_obj.get_score())
 
@@ -126,7 +120,7 @@ class GamePool(object):
         return map(lambda x: x[0], batch_nodes), \
                map(lambda x: x[1], batch_nodes), \
                map(lambda x: x[2], batch_nodes), \
-               map(lambda x: x[3], batch_nodes)
+               map(lambda x: x[4], batch_nodes)
 
 if __name__ == "__main__":
     import game_model

@@ -18,7 +18,7 @@ class GameModel(object):
         self._name = name
         self._action_number = 4
         self._batch_size = batch_size
-        self._eps = 0.8
+        self._eps = 1.0
 
         # If no input, creates the internal variable, otherwise uses input value.
         self._pl_dict = pl_dict if pl_dict else self.create_placeholder(self._batch_size)
@@ -46,7 +46,7 @@ class GameModel(object):
                                          name='c_b'),
                    'n_b': tf.placeholder(tf.float32,
                                          shape=(batch_size, 4, 4, 1),
-                                         name='c_b'),
+                                         name='n_b'),
                    'c_r': tf.placeholder(tf.float32,
                                          shape=(batch_size, 1),
                                          name='c_r'),
@@ -63,32 +63,32 @@ class GameModel(object):
         """
         params_dict = {
             'model_conv1_weights': tf.get_variable('model_conv1_weights',
-                                                   shape=[4, 4, 1, 128],
+                                                   shape=[16, 1024],
                                                    initializer=tf.truncated_normal_initializer(
                                                        mean=0.0, stddev=0.01)),
             'model_conv1_biases': tf.get_variable('model_conv1_biases',
-                                                  shape=[128],
+                                                  shape=[1024],
                                                   initializer=tf.truncated_normal_initializer(
                                                       mean=0.0, stddev=0.01)),
             'model_conv2_weights': tf.get_variable('model_conv2_weights',
-                                                   shape=[4, 4, 128, 64],
+                                                   shape=[1024, 512],
                                                    initializer=tf.truncated_normal_initializer(
                                                        mean=0.0, stddev=0.01)),
             'model_conv2_biases': tf.get_variable('model_conv2_biases',
-                                                  shape=[64],
+                                                  shape=[512],
                                                   initializer=tf.truncated_normal_initializer(
                                                       mean=0.0, stddev=0.01)),
             'model_local3_weights': tf.get_variable('model_local3_weights',
-                                                    shape=[64 * 4, 64],
+                                                    shape=[512, 256],
                                                     initializer=tf.truncated_normal_initializer(
                                                         mean=0.0, stddev=0.01)),
             'model_local3_biases': tf.get_variable('model_local3_biases',
-                                                   shape=[64],
+                                                   shape=[256],
                                                    initializer=tf.truncated_normal_initializer(
                                                        mean=0.0, stddev=0.01)),
             # Below is the output layer, the size should be decided by the number of action.
             'model_matmul4_weights': tf.get_variable('model_matmul4_weights',
-                                                     [64, action_number],
+                                                     [256, action_number],
                                                      tf.float32,
                                                      initializer=tf.truncated_normal_initializer(
                                                          mean=0.0, stddev=0.01)),
@@ -141,11 +141,10 @@ class GameModel(object):
 
         # R+r*max(S', a) - Q(S, A) -> 0
         next_score = tf.multiply(self._eps, tf.reduce_max(next_q, axis=1))
-        now_score = tf.reduce_sum(tf.multiply(current_q, self.get_pl_dict().get('c_a')), axis=1)
-        raw_loss = tf.abs(self.get_pl_dict().get('c_r') + next_score - now_score)
+        current_score = tf.reduce_sum(tf.multiply(current_q, self.get_pl_dict().get('c_a')), axis=1)
+        raw_loss = tf.abs(self.get_pl_dict().get('c_r') + next_score - current_score)
 
-        loss = tf.reduce_mean(raw_loss)
-        internal_variable["loss"] = loss
+        internal_variable["raw_loss"] = raw_loss
         return internal_variable
 
     def generate_action_q(self, board_pl):
@@ -168,11 +167,11 @@ class GameModel(object):
         internal_variable = {}
 
         with tf.variable_scope('%s_conv1' % self._name) as scope:
-            kernel1 = self._params_dict.get('model_conv1_weights')
-            conv1 = tf.nn.conv2d(board_pl, kernel1, [1, 1, 1, 1], padding='SAME')
+            weight1 = self._params_dict.get('model_conv1_weights')
             biases1 = self._params_dict.get('model_conv1_biases')
-            sum_value1 = tf.nn.bias_add(conv1, biases1)
-            layer1_output = tf.nn.relu(sum_value1, "layer1_output")
+            conv1 = tf.matmul(tf.reshape(board_pl, [self._batch_size, 16]), weight1)
+            sum_value1 = tf.add(conv1, biases1)
+            layer1_output = tf.nn.relu(sum_value1, name="layer1_output")
 
         #layer1_output = tf.Print(layer1_output,
         #                         [layer1_output, kernel1, board_pl],
@@ -184,31 +183,17 @@ class GameModel(object):
         # conv2, output is [batch_size, 4, 4, 64]
         with tf.variable_scope('%s_conv2' % self._name) as scope:
             kernel2 = self._params_dict.get('model_conv2_weights')
-            conv2 = tf.nn.conv2d(layer1_output, kernel2, [1, 1, 1, 1], padding='SAME')
+            conv2 = tf.matmul(layer1_output, kernel2)
             biases2 = self._params_dict.get('model_conv2_biases')
-            sum_value2 = tf.nn.bias_add(conv2, biases2)
-            layer2_output = tf.nn.relu(sum_value2, "layer2_output")
-
-        # The output size is same as input. [batch_size, 4, 4, 128]
-        # norm2 = tf.nn.lrn(layer2_output, 2, bias=1.0, alpha=0.1 / 9.0, beta=0.75, name='norm2')
-
-        # pool2
-        # output is [batch_size, 2, 2, 64]
-        pool2 = tf.nn.max_pool(layer2_output,
-                               ksize=[1, 2, 2, 1],
-                               strides=[1, 2, 2, 1],
-                               padding='SAME',
-                               name='pool2')
+            sum_value2 = tf.add(conv2, biases2)
+            layer2_output = tf.nn.relu(sum_value2, name="layer2_output")
 
         # local3
         # weight is [128 * 4, 128] output is [batch_size, 128]
         with tf.variable_scope('%s_local3' % self._name) as scope:
-            # Move everything into depth so we can perform a single matrix multiply.
-            reshape3 = tf.reshape(pool2, [self._batch_size, 4 * 64])
-            dropout_reshape3 = tf.nn.dropout(reshape3, dropout_keep_prob)
             weights3 = self._params_dict.get('model_local3_weights')
             biases3 = self._params_dict.get('model_local3_biases')
-            matmul_value = tf.matmul(dropout_reshape3, weights3) + biases3
+            matmul_value = tf.matmul(layer2_output, weights3) + biases3
             layer3_output = tf.nn.relu(matmul_value, name="layer3_output")
 
         # matmul4
@@ -217,15 +202,9 @@ class GameModel(object):
             weights4 = self._params_dict.get('model_matmul4_weights')
             biases4 = self._params_dict.get('model_matmul4_biases')
             layer4_output = tf.add(tf.matmul(layer3_output, weights4), biases4, name="layer4_output")
-            # expected_q = tf.nn.softmax(tf.matmul(layer3_output, weights4) + biases4)
-            # _activation_summary(softmax_linear)
-        # Save the model in a specific name.
+
         action_q = layer4_output
-        # output the final data, [batch_size, ACTION_NUMBER]
-        # The first return value is useful, the second and third is for debugging.
-        # params_dict.get('model_conv1_weights')
-        # expected_q = tf.Print(expected_q,[expected_q, layer3_output, layer2_output, layer1_output],'debug info: ', summarize=16)
-        # expected_q = tf.Print(expected_q, [expected_q, params_dict.get('model_conv1_weights'), params_dict.get('model_conv1_biases')], "debug info:", summarize=16)
+
         return action_q
 
     def create_feed_dict(self, batch_size, current_board, next_board, current_action, current_revenue):

@@ -55,8 +55,8 @@ def scalar_summary_detail(scalar_name, scalar_tensor, averages):
 def train():
     epoch_size = 32
     batch_size = 128
-    decay_iteration = 2000
-    total_iteration = decay_iteration * 20             # 8,000,000
+    decay_iteration = 10000
+    total_iteration = decay_iteration * 10             # 8,000,000
 
     """Trains the game_model."""
     with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
@@ -65,24 +65,23 @@ def train():
         averages = tf.train.ExponentialMovingAverage(0.95, global_step)
 
         # Get the score of each direction.
-        epoch_loss = game_model_instance.get_internal_variable().get("loss")
-        epoch_loss_op = scalar_summary_detail('epoch_loss', epoch_loss, averages)
+        raw_loss = game_model_instance.get_internal_variable().get("raw_loss")
+        # Record all summary data.
+        for var in tf.trainable_variables():
+            tf.summary.histogram(var.op.name, var)
 
         # Track the moving averages of all trainable variables.
-        # variables_averages_op = averages.apply(tf.trainable_variables())
-
-        # Explicitly trigger waiting for the average loss tensor.
+        epoch_loss = tf.sqrt(tf.reduce_sum(raw_loss))
+        epoch_loss_op = scalar_summary_detail('epoch_loss', epoch_loss, averages)
         with tf.control_dependencies([epoch_loss_op]), tf.name_scope('update'):
             learning_rate = tf.train.exponential_decay(
-                0.1, global_step, epoch_size * decay_iteration, 0.9, staircase=True)
+                0.1, global_step, epoch_size * decay_iteration, 0.8, staircase=True)
             tf.summary.scalar('learning_rate', learning_rate)
             opt = tf.train.GradientDescentOptimizer(learning_rate)
             grads = opt.compute_gradients(epoch_loss)
             train_op = opt.apply_gradients(grads, global_step=global_step)
 
-        # Record all summary data.
-        for var in tf.trainable_variables():
-            tf.summary.histogram(var.op.name, var)
+
 
         for var in game_model_instance.get_internal_variable().values():
             tf.summary.histogram(var.op.name, var)

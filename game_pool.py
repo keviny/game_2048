@@ -48,28 +48,28 @@ class GamePool(object):
         # Reset the game if needed.
         self._game_obj.reset()
 
-        current_board = np.array(self._game_obj.get_board())
-        current_board_list = [current_board, current_board, ]
-
         while not self._game_obj.is_end():
-            current_board = np.array(self._game_obj.get_board())
-            current_board_list.append(current_board)
+            current_board = np.array(self._game_obj.get_before_board())
 
-            feed_dict = self._model.create_feed_dict(1, current_board, None, None, None)
+            feed_dict = self._model.create_feed_dict(4, self._game_obj.get_eval_boards(), None, None, None)
             # self._sess.run([self._actions_q], feed_dict=feed_dict)
-            action_qs = self._sess.run([self._actions_q], feed_dict=feed_dict)[0][0]
+            action_qs = self._sess.run([self._actions_q], feed_dict=feed_dict)[0]
+            action_score = action_qs + self._game_obj.get_eval_inc()
+            #print action_qs,self._game_obj.get_eval_inc(), action_score
+            #print
             # use random move for some case.
             if random.random() > 0.1:
-                actions, inc = self._game_obj.score_move(action_qs)
+                actions, inc, before_gen_board = self._game_obj.score_move(action_score)
             else:
-                actions, inc = self._game_obj.random_move()
+                actions, inc, before_gen_board = self._game_obj.random_move()
 
             if self._game_obj.is_end():
-                self._training_node_pool.append(
-                    [current_board, self._game_obj.get_board(), actions, self._game_obj.get_score(), self._game_obj.get_score()])
+                pass
+                # self._training_node_pool.append([current_board, self._game_obj.get_before_board(), actions, self._game_obj.get_score(), self._game_obj.get_score()])
             else:
                 self._training_node_pool.append(
-                    [current_board, self._game_obj.get_board(), actions, self._game_obj.get_score(), inc])
+                    [current_board, self._game_obj.get_before_board(), actions, self._game_obj.get_score(), inc])
+                # print self._training_node_pool[-1]
             if random.random() < 0.00001:
                 print "For debug: " + str(self._training_node_pool[-1])
 

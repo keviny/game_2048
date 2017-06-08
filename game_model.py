@@ -16,9 +16,9 @@ class GameModel(object):
     """
     def __init__(self, name, batch_size, pl_dict=None, params_dict=None):
         self._name = name
-        self._action_number = 4
+        self._action_number = 1
         self._batch_size = batch_size
-        self._eps = 1.0
+        self._eps = 0.9
 
         # If no input, creates the internal variable, otherwise uses input value.
         self._pl_dict = pl_dict if pl_dict else self.create_placeholder(self._batch_size)
@@ -141,10 +141,9 @@ class GameModel(object):
         internal_variable['c_r'] = self.get_pl_dict().get('c_r')
         internal_variable['c_a'] = self.get_pl_dict().get('c_a')
 
-        # R+r*max(S', a) - Q(S, A) -> 0
-        next_score = tf.multiply(self._eps, tf.reduce_max(next_q, axis=1))
-        current_score = tf.reduce_sum(tf.multiply(current_q, self.get_pl_dict().get('c_a')), axis=1)
-        raw_loss = tf.abs(self.get_pl_dict().get('c_r') + next_score - current_score)
+        # R + Q(S+1) - Q(S) -> 0
+        # next_score = tf.multiply(self._eps, tf.reduce_max(next_q, axis=1))
+        raw_loss = tf.abs(self.get_pl_dict().get('c_a') - current_q + tf.multiply(self._eps, next_q))
 
         internal_variable["raw_loss"] = raw_loss
         return internal_variable
@@ -206,6 +205,7 @@ class GameModel(object):
 
     def create_feed_dict(self, batch_size, current_board, next_board, current_action, current_revenue):
         feed_dict = {}
+
         if current_board is not None:
             feed_dict[self._pl_dict['c_b']] = np.array(current_board).reshape(batch_size, 4, 4, 1).astype(float)
         if next_board is not None:

@@ -27,6 +27,7 @@ class Game(object):
         self.action_counter_ = 0    # action counter
 
         # Internally, we store a 1-D array for the matrix.
+        self.before_board_ = [0.0] * (BOARD_SIZE * BOARD_SIZE)
         self.board_ = [0.0] * (BOARD_SIZE * BOARD_SIZE)
         self.random_gen()
 
@@ -48,6 +49,7 @@ class Game(object):
         self.score_ = 0
         self.action_counter_ = 0
         # Internally, we store a 1-D array for the matrix.
+        self.before_board_ = [0.0] * (BOARD_SIZE * BOARD_SIZE)
         self.board_ = [0.0] * (BOARD_SIZE * BOARD_SIZE)
         self.random_gen()
 
@@ -111,13 +113,14 @@ class Game(object):
             total_incremental_score += shot_incremental_score
             for i in xrange(0, BOARD_SIZE):
                 new_board[positions[i]] = output_list[i]
+        before_board = copy.deepcopy(self.board_);
         if update:
             self.board_ = new_board
             self.score_ += total_incremental_score
             self.action_counter_ += 1
             self.random_gen()
 
-        return new_board, total_incremental_score
+        return new_board, total_incremental_score, before_board
 
     def random_move(self):
         directions = self.get_valid_directions()
@@ -125,8 +128,8 @@ class Game(object):
 
         actions = np.zeros(4)
         actions[direction] = 1.0
-        _, inc_score = self.move(direction)
-        return actions, inc_score
+        _, inc_score, before_gen_board = self.move(direction)
+        return actions, inc_score, before_gen_board
 
     def score_move(self, action_score):
         """
@@ -143,9 +146,9 @@ class Game(object):
         direction = np.argmax(action_score)
         actions = np.zeros(4)
         actions[direction] = 1.0
-        _, inc_score = self.move(direction)
+        _, inc_score, before_gen_board = self.move(direction)
 
-        return actions, inc_score
+        return actions, inc_score, before_gen_board
 
     def max_move(self):
         directions = self.get_valid_directions(False)
@@ -188,7 +191,7 @@ class Game(object):
         """ Check if this game already end. """
         return len(self.get_valid_directions()) == 0
 
-    def get_next_boards(self, directions):
+    def get_next_boards(self, directions=[0, 0, 0, 0]):
         """
         Args:
           directions: The direction list, which could contain None.
@@ -205,8 +208,22 @@ class Game(object):
             if directions[direction] != -1:
                 board_score_dict[direction] = self.move(direction, False)
             else:
-                board_score_dict[direction] = (self.get_board(), 0)
+                board_score_dict[direction] = (self.get_board(), 0, self.get_before_board())
         return board_score_dict
+
+    def get_eval_boards(self):
+        next_boards = self.get_next_boards()
+        return [next_boards.get(Direction.left)[0],
+                next_boards.get(Direction.right)[0],
+                next_boards.get(Direction.up)[0],
+                next_boards.get(Direction.down)[0]]
+
+    def get_eval_inc(self):
+        next_boards = self.get_next_boards()
+        return [[next_boards.get(Direction.left)[1]],
+                [next_boards.get(Direction.right)[1]],
+                [next_boards.get(Direction.up)[1]],
+                [next_boards.get(Direction.down)[1]]]
 
     def check_left_right(self):
         ret_dict = {}
@@ -252,6 +269,7 @@ class Game(object):
     def random_gen(self):
         # Randomly generate one element in any available position.
         next_value = random.random() > 0.9 and 4 or 2
+        self.before_board_=copy.deepcopy(self.board_)
         self.board_[random.choice([i for i, e in enumerate(self.board_) if e == 0])] = next_value
         # refresh the internal states
         self._next_valid_actions = self.check_left_right() + self.check_up_down()
@@ -259,7 +277,11 @@ class Game(object):
     def get_board(self):
         return copy.deepcopy(self.board_)
 
+    def get_before_board(self):
+        return copy.deepcopy(self.before_board_)
+
     def set_board(self, board):
+        self.before_board_ = copy.deepcopy(board)
         self.board_ = copy.deepcopy(board)
 
     def get_score(self):
@@ -268,17 +290,16 @@ class Game(object):
     def get_action_counter(self):
         return self.action_counter_
 
-    def display(self):
+    def display(self, board):
         a = ("┌", "├", "├", "├", "└")
         b = ("┬", "┼", "┼", "┼", "┴")
         c = ("┐", "┤", "┤", "┤", "┘")
         for i in range(BOARD_SIZE):
             print a[i] + ("─" * 5 + b[i]) * 3 + ("─" * 5 + c[i])
             for j in range(4):
-                print "│%4s" % (self.board_[i * BOARD_SIZE + j] if self.board_[i * BOARD_SIZE + j] else ' '),
+                print "│%4s" % (board[i * BOARD_SIZE + j] if board[i * BOARD_SIZE + j] else ' '),
             print "│"
         print a[4] + ("─" * 5 + b[4]) * 3 + ("─" * 5 + c[4])
-        print self.board_
 
     def __repr__(self):
         return "score: %d step: %d" % (self.score_, self.action_counter_)
@@ -288,12 +309,21 @@ if __name__ == '__main__':
 
     # Random movement.
     game.move(2)
-    game.display()
+    game.display(game.get_board())
+    game.display(game.get_before_board())
+    print game.get_next_boards()
+    print game.get_eval_boards()
+
+    game.display(game.get_next_boards().get(Direction.left)[0])
+    game.display(game.get_next_boards().get(Direction.right)[0])
+    game.display(game.get_next_boards().get(Direction.up)[0])
+    game.display(game.get_next_boards().get(Direction.down)[0])
 
     # Confirmed movement.
     game.set_board([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 8, 32])
     game.move(2)
-    game.display()
+    game.display(game.get_board())
+    game.display(game.get_before_board())
 #    with open(sys.argv[1], 'w') as wfile:
 #        for x in xrange(1, 10000):
 #            game = Game()

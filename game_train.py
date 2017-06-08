@@ -56,7 +56,7 @@ def train():
     epoch_size = 32
     batch_size = 128
     decay_iteration = 10000
-    total_iteration = decay_iteration * 10             # 8,000,000
+    total_iteration = decay_iteration * 20             # 8,000,000
 
     """Trains the game_model."""
     with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
@@ -81,8 +81,6 @@ def train():
             grads = opt.compute_gradients(epoch_loss)
             train_op = opt.apply_gradients(grads, global_step=global_step)
 
-
-
         for var in game_model_instance.get_internal_variable().values():
             tf.summary.histogram(var.op.name, var)
 
@@ -99,7 +97,7 @@ def train():
         logger.info("model ready")
 
         # Creates the game object, using the existing model.
-        eval_game_obj = game_model.GameModel("eval", 1, params_dict=game_model_instance.get_params_dict())
+        eval_game_obj = game_model.GameModel("eval", 4, params_dict=game_model_instance.get_params_dict())
         pool = game_pool.GamePool(500000, sess, eval_game_obj)
         logger.info("gen graph ready")
         sess.run(init)

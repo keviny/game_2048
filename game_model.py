@@ -146,8 +146,8 @@ class GameModel(object):
 
         # R + Q(S+1) - Q(S) -> 0
         # next_score = tf.multiply(self._eps, tf.reduce_max(next_q, axis=1))
-        raw_loss = tf.abs(self.get_pl_dict().get('c_a') - current_q + tf.multiply(self._eps, next_q))
-
+        raw_loss = tf.abs(self.get_pl_dict().get('c_r') - current_q + tf.multiply(self._eps, next_q))
+        internal_variable["c_r"] = self.get_pl_dict().get('c_r');
         internal_variable["raw_loss"] = raw_loss
         return internal_variable
 
@@ -237,10 +237,10 @@ if __name__ == "__main__":
     gm.generate_model()
     tensor = gm.get_internal_variable().get("raw_loss")
     tensor1 = gm.get_internal_variable().get("current_q")
-    print "AAAAAAAAAAAAAAAAAAAAA"
+    tensor2 = gm.get_internal_variable().get("next_q")
+    tensor3 = gm.get_internal_variable().get("c_r")
     print tensor
     print tensor1
-    print "AAAAAAAAAAAAAAAAAAAAA"
     with tf.Session() as sess:
         init = tf.global_variables_initializer()
         print init
@@ -259,9 +259,15 @@ if __name__ == "__main__":
             target_action,
             rev)
         print feed_dict
-        value = sess.run([tensor, tensor1],
+        value = sess.run([tensor, tensor1, tensor2, tensor3],
                          feed_dict=feed_dict)
+        print "raw_loss"
         print value[0]
+        print "current_q"
         print value[1]
+        print "next_q"
+        print value[2]
+        print "c_r"
+        print value[3]
 
 

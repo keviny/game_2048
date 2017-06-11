@@ -60,7 +60,7 @@ class GamePool(object):
             #print action_qs,self._game_obj.get_eval_inc(), action_score
             #print
             # use random move for some case.
-            if random.random() > 0.1:
+            if random.random() > 0.05:
                 actions, inc, before_gen_board = self._game_obj.score_move(action_score)
             else:
                 actions, inc, before_gen_board = self._game_obj.random_move()
@@ -70,9 +70,9 @@ class GamePool(object):
                 # self._training_node_pool.append([current_board, self._game_obj.get_before_board(), actions, self._game_obj.get_score(), self._game_obj.get_score()])
             else:
                 # If step_counter greater than the half of previous average step, then add that into training set.
-                if step_counter > stat_info[2]/10:
-                    self._training_node_pool.append(
-                        [current_board, self._game_obj.get_before_board(), actions, self._game_obj.get_score(), inc])
+                #if step_counter > stat_info[2]/:
+                self._training_node_pool.append(
+                    [current_board, self._game_obj.get_before_board(), actions, self._game_obj.get_score(), inc])
                 # print self._training_node_pool[-1]
             if random.random() < 0.00001:
                 print "For debug: " + str(self._training_node_pool[-1])

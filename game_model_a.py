@@ -253,7 +253,7 @@ if __name__ == "__main__":
         next_board = [32, 1, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 1,
                         32, 1, 2, 2, 4, 256, 8, 2, 2, 4, 32, 4, 4, 32, 8, 2]
         target_action = [[0, 0, 1, 0], [1, 0, 0, 0]]
-        rev = [0, 1]
+        rev = [0, 3]
         print gm.get_pl_dict()
         feed_dict=gm.create_feed_dict(
             gm.get_batch_size(),

@@ -57,7 +57,7 @@ def scalar_summary_detail(scalar_name, scalar_tensor, averages):
 def train():
     epoch_size = 32
     batch_size = 128
-    decay_iteration = 1000
+    decay_iteration = 3000
     total_iteration = decay_iteration * 20             # 8,000,000
     game_model = importlib.import_module(FLAGS.model_name)
 

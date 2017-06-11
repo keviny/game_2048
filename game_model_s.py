@@ -18,7 +18,7 @@ class GameModel(object):
         self._name = name
         self._action_number = 1
         self._batch_size = batch_size
-        self._eps = 0.9
+        self._eps = 1.0
 
         # If no input, creates the internal variable, otherwise uses input value.
         self._pl_dict = pl_dict if pl_dict else self.create_placeholder(self._batch_size)
@@ -118,7 +118,7 @@ class GameModel(object):
 
         # R + Q(S+1) - Q(S) -> 0
         # next_score = tf.multiply(self._eps, tf.reduce_max(next_q, axis=1))
-        raw_loss = tf.abs(self.get_pl_dict().get('c_a') - current_q + tf.multiply(self._eps, next_q))
+        raw_loss = tf.squre(self.get_pl_dict().get('c_r') - current_q + tf.multiply(self._eps, next_q))
 
         internal_variable["raw_loss"] = raw_loss
         return internal_variable
@@ -148,7 +148,6 @@ class GameModel(object):
             sum_value1 = tf.nn.bias_add(conv1, biases1)
             layer1_output = tf.nn.relu(sum_value1, "layer1_output")
 
-         # conv2, output is [batch_size, 4, 4, 64]
         with tf.variable_scope('%s_conv2' % self._name) as scope:
             kernel2 = self._params_dict.get('model_conv2_weights')
             conv2 = tf.nn.conv2d(layer1_output, kernel2, [1, 1, 1, 1], padding='SAME')

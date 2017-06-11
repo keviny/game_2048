@@ -47,8 +47,10 @@ class GamePool(object):
 
         # Reset the game if needed.
         self._game_obj.reset()
-
+        step_counter = 0
+        stat_info = self.get_stat_info()
         while not self._game_obj.is_end():
+            step_counter += 1
             current_board = np.array(self._game_obj.get_before_board())
 
             feed_dict = self._model.create_feed_dict(4, self._game_obj.get_eval_boards(), None, None, None)
@@ -67,8 +69,10 @@ class GamePool(object):
                 pass
                 # self._training_node_pool.append([current_board, self._game_obj.get_before_board(), actions, self._game_obj.get_score(), self._game_obj.get_score()])
             else:
-                self._training_node_pool.append(
-                    [current_board, self._game_obj.get_before_board(), actions, self._game_obj.get_score(), inc])
+                # If step_counter greater than the half of previous average step, then add that into training set.
+                if step_counter > stat_info[2]/10:
+                    self._training_node_pool.append(
+                        [current_board, self._game_obj.get_before_board(), actions, self._game_obj.get_score(), inc])
                 # print self._training_node_pool[-1]
             if random.random() < 0.00001:
                 print "For debug: " + str(self._training_node_pool[-1])

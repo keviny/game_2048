@@ -4,17 +4,19 @@ To start the tensorboard, run:
 learning/brain/tensorboard/tensorboard.sh --port 2222 --logdir /tmp/sug_logs
 """
 
-import game_model
 import game_pool
 import tensorflow as tf
 import logging
 import logging.handlers
 import time
+import importlib
 from tensorflow.python.training.summary_io import SummaryWriter
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
+flags.DEFINE_string('model_name', 'game_model',
+                    'Default model name, use game_model when no value set.')
 flags.DEFINE_string('output_path', '/tmp/log/',
                     'Tensorflow log will be under /tmp/[output_path]')
 flags.DEFINE_string('exp_name', 'test1', 'The experiment name')
@@ -55,8 +57,9 @@ def scalar_summary_detail(scalar_name, scalar_tensor, averages):
 def train():
     epoch_size = 32
     batch_size = 128
-    decay_iteration = 10000
+    decay_iteration = 1000
     total_iteration = decay_iteration * 20             # 8,000,000
+    game_model = importlib.import_module(FLAGS.model_name)
 
     """Trains the game_model."""
     with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
@@ -109,6 +112,7 @@ def train():
             pool.generate_training_data()
             for p in xrange(epoch_size):
                 feed_dict = pool.create_external_feed_dict(game_model_instance)
+                # Here is where most of time consuemd.
                 # Core training function.
                 _, epoch_loss_value, learning_rate_value = \
                     sess.run([train_op, epoch_loss, learning_rate],
@@ -134,7 +138,7 @@ def train():
                 summary_writer.add_summary(summary_str, i)
                 summary_writer.flush()
                 stat_info = pool.get_stat_info_string()
-                logger.info('[%s] Summary saved. %s' % (FLAGS.exp_name, stat_info))
+                logger.info('[%s] [%s] Summary saved. %s' % (FLAGS.exp_name, game_model_instance.get_name(), stat_info))
         logger.info('[%s] Final stat_info:%s' % (FLAGS.exp_name, stat_info))
 
 

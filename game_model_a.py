@@ -24,7 +24,7 @@ class GameModel(object):
         self._pl_dict = pl_dict if pl_dict else self.create_placeholder(self._batch_size)
         self._params_dict = params_dict if params_dict else self.create_game_params_dict(self._action_number)
         self._internal_variable = self.generate_model()
-        self._name = "model"
+        self._name = "model_a"
 
     def get_name(self):
         return self._name;
@@ -66,34 +66,37 @@ class GameModel(object):
         """
         layer1_output = 128
         layer2_output = 64
+        """Generate the model parameters in the Q NN.
+        Those parameters will be shared to calculate the Q value.
+        """
         params_dict = {
-            'layer1_1_2_conv_weights': tf.get_variable('layer1_1_2_conv_weights',
-                                                       shape=[1, 2, 1, layer1_output],
-                                                       initializer=tf.truncated_normal_initializer(
-                                                          mean=0.0, stddev=0.01)),
-            'layer1_2_1_conv_weights': tf.get_variable('layer1_2_1_conv_weights',
-                                                       shape=[2, 1, 1, layer1_output],
-                                                       initializer=tf.truncated_normal_initializer(
-                                                          mean=0.0, stddev=0.01)),
-            'layer2_1_2_1_2_conv_weights': tf.get_variable('layer2_1_2_1_2_conv_weights',
-                                                       shape=[1, 2, layer1_output, layer2_output],
-                                                       initializer=tf.truncated_normal_initializer(
-                                                           mean=0.0, stddev=0.01)),
-            'layer2_1_2_2_1_conv_weights': tf.get_variable('layer2_1_2_2_1_conv_weights',
-                                                       shape=[2, 1, layer1_output, layer2_output],
-                                                       initializer=tf.truncated_normal_initializer(
-                                                           mean=0.0, stddev=0.01)),
-            'layer2_2_1_1_2_conv_weights': tf.get_variable('layer2_2_1_1_2_conv_weights',
-                                                       shape=[1, 2, layer1_output, layer2_output],
-                                                       initializer=tf.truncated_normal_initializer(
-                                                           mean=0.0, stddev=0.01)),
-            'layer2_2_1_2_1_conv_weights': tf.get_variable('layer2_2_1_2_1_conv_weights',
-                                                       shape=[2, 1, layer1_output, layer2_output],
-                                                       initializer=tf.truncated_normal_initializer(
-                                                           mean=0.0, stddev=0.01)),
+            'model_conv1_weights': tf.get_variable('model_conv1_weights',
+                                                   shape=[4, 4, 1, layer1_output],
+                                                   initializer=tf.truncated_normal_initializer(
+                                                       mean=0.0, stddev=0.01)),
+            'model_conv1_biases': tf.get_variable('model_conv1_biases',
+                                                  shape=[layer1_output],
+                                                  initializer=tf.truncated_normal_initializer(
+                                                      mean=0.0, stddev=0.01)),
+            'model_conv2_weights': tf.get_variable('model_conv2_weights',
+                                                   shape=[4, 4, layer1_output, layer2_output],
+                                                   initializer=tf.truncated_normal_initializer(
+                                                       mean=0.0, stddev=0.01)),
+            'model_conv2_biases': tf.get_variable('model_conv2_biases',
+                                                  shape=[layer2_output],
+                                                  initializer=tf.truncated_normal_initializer(
+                                                      mean=0.0, stddev=0.01)),
+            'model_local3_weights': tf.get_variable('model_local3_weights',
+                                                    shape=[64 * 4, 64],
+                                                    initializer=tf.truncated_normal_initializer(
+                                                        mean=0.0, stddev=0.01)),
+            'model_local3_biases': tf.get_variable('model_local3_biases',
+                                                   shape=[64],
+                                                   initializer=tf.truncated_normal_initializer(
+                                                       mean=0.0, stddev=0.01)),
             # Below is the output layer, the size should be decided by the number of action.
             'model_matmul4_weights': tf.get_variable('model_matmul4_weights',
-                                                     [layer2_output * (8 + 9) * 2 + layer1_output * (12 + 12), action_number],
+                                                     [64, action_number],
                                                      tf.float32,
                                                      initializer=tf.truncated_normal_initializer(
                                                          mean=0.0, stddev=0.01)),
@@ -105,29 +108,6 @@ class GameModel(object):
         }
 
         return params_dict
-
-    def get_unifrom_regularization(self):
-        regularization_list = []
-        for pl in self._params_dict.values():
-            regularization_list.append(tf.sqrt(tf.reduce_sum(tf.square(pl))))
-        return sum(regularization_list)
-
-    def get_classified_regularization(self):
-        regularization_list = [
-            self.get_classified_regularization_item('model_conv1_weights'),
-            self.get_classified_regularization_item('model_conv1_biases'),
-            self.get_classified_regularization_item('model_conv2_weights'),
-            self.get_classified_regularization_item('model_conv2_biases'),
-            self.get_classified_regularization_item('model_local3_weights'),
-            self.get_classified_regularization_item('model_local3_biases'),
-            self.get_classified_regularization_item('model_matmul4_weights'),
-            self.get_classified_regularization_item('model_matmul4_biases')]
-        return sum(regularization_list)
-
-    def get_classified_regularization_item(self, name):
-        """ Get the classified regularization for one parameter. """
-        pl = self._params_dict[name]
-        return tf.sqrt(tf.reduce_sum(tf.square(pl))) / float(sum(pl.get_shape().as_list()))
 
     def evaluate_target_board(self, target_pl_dict, params_dict):
         """Generates the reinforcement learning loss function"""
@@ -146,7 +126,7 @@ class GameModel(object):
 
         # R + Q(S+1) - Q(S) -> 0
         # next_score = tf.multiply(self._eps, tf.reduce_max(next_q, axis=1))
-        raw_loss = tf.abs(self.get_pl_dict().get('c_a') - current_q + tf.multiply(self._eps, next_q))
+        raw_loss = tf.abs(self.get_pl_dict().get('c_r') - current_q + tf.multiply(self._eps, next_q))
 
         internal_variable["raw_loss"] = raw_loss
         return internal_variable
@@ -170,40 +150,65 @@ class GameModel(object):
 
         internal_variable = {}
 
-        layer1_1_2_conv_weights = self._params_dict.get('layer1_1_2_conv_weights')
-        layer1_2_1_conv_weights = self._params_dict.get('layer1_2_1_conv_weights')
+        with tf.variable_scope('%s_conv1' % self._name) as scope:
+            kernel1 = self._params_dict.get('model_conv1_weights')
+            conv1 = tf.nn.conv2d(board_pl, kernel1, [1, 1, 1, 1], padding='SAME')
+            biases1 = self._params_dict.get('model_conv1_biases')
+            sum_value1 = tf.nn.bias_add(conv1, biases1)
+            layer1_output = tf.nn.relu(sum_value1, "layer1_output")
 
-        layer2_1_2_1_2_conv_weights = self._params_dict.get('layer2_1_2_1_2_conv_weights')
-        layer2_1_2_2_1_conv_weights = self._params_dict.get('layer2_1_2_2_1_conv_weights')
+        #layer1_output = tf.Print(layer1_output,
+        #                         [layer1_output, kernel1, board_pl],
+        #                         summarize=16)
+        # norm1, output size is same as input
+        # http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf
+        # norm1 = tf.nn.lrn(layer1_output, 2, bias=1.0, alpha=0.1 / 9.0, beta=0.75, name='norm1')
 
-        layer2_2_1_1_2_conv_weights = self._params_dict.get('layer2_2_1_1_2_conv_weights')
-        layer2_2_1_2_1_conv_weights = self._params_dict.get('layer2_2_1_2_1_conv_weights')
+        # conv2, output is [batch_size, 4, 4, 64]
+        with tf.variable_scope('%s_conv2' % self._name) as scope:
+            kernel2 = self._params_dict.get('model_conv2_weights')
+            conv2 = tf.nn.conv2d(layer1_output, kernel2, [1, 1, 1, 1], padding='SAME')
+            biases2 = self._params_dict.get('model_conv2_biases')
+            sum_value2 = tf.nn.bias_add(conv2, biases2)
+            layer2_output = tf.nn.relu(sum_value2, "layer2_output")
 
-        model_matmul4_weights = self._params_dict.get('model_matmul4_weights')
-        model_matmul4_biases = self._params_dict.get('model_matmul4_biases')
+        # The output size is same as input. [batch_size, 4, 4, 128]
+        # norm2 = tf.nn.lrn(layer2_output, 2, bias=1.0, alpha=0.1 / 9.0, beta=0.75, name='norm2')
 
-        conv1_1_2 = tf.nn.conv2d(board_pl, layer1_1_2_conv_weights, strides=[1, 1, 1, 1], padding='VALID', name='conv1_1_2')
-        conv1_2_1 = tf.nn.conv2d(board_pl, layer1_2_1_conv_weights, strides=[1, 1, 1, 1], padding='VALID', name='conv1_2_1')
+        # pool2
+        # output is [batch_size, 2, 2, 64]
+        pool2 = tf.nn.max_pool(layer2_output,
+                               ksize=[1, 2, 2, 1],
+                               strides=[1, 2, 2, 1],
+                               padding='SAME',
+                               name='pool2')
 
-        conv1_1_2_1_2 = tf.nn.conv2d(conv1_1_2, layer2_1_2_1_2_conv_weights, strides=[1, 1, 1, 1], padding='VALID')
-        conv1_1_2_2_1 = tf.nn.conv2d(conv1_1_2, layer2_1_2_2_1_conv_weights, strides=[1, 1, 1, 1], padding='VALID')
+        # local3
+        # weight is [128 * 4, 128] output is [batch_size, 128]
+        with tf.variable_scope('%s_local3' % self._name) as scope:
+            # Move everything into depth so we can perform a single matrix multiply.
+            reshape3 = tf.reshape(pool2, [self._batch_size, 4 * 64])
+            dropout_reshape3 = tf.nn.dropout(reshape3, dropout_keep_prob)
+            weights3 = self._params_dict.get('model_local3_weights')
+            biases3 = self._params_dict.get('model_local3_biases')
+            matmul_value = tf.matmul(dropout_reshape3, weights3) + biases3
+            layer3_output = tf.nn.relu(matmul_value, name="layer3_output")
 
-        conv1_2_1_1_2 = tf.nn.conv2d(conv1_2_1, layer2_2_1_1_2_conv_weights, strides=[1, 1, 1, 1], padding='VALID')
-        conv1_2_1_2_1 = tf.nn.conv2d(conv1_2_1, layer2_2_1_2_1_conv_weights, strides=[1, 1, 1, 1], padding='VALID')
-
-        concated_input = tf.concat([
-          tf.reshape(conv1_1_2, [self._batch_size, -1]),
-          tf.reshape(conv1_2_1, [self._batch_size, -1]),
-          tf.reshape(conv1_1_2_1_2, [self._batch_size, -1]),
-          tf.reshape(conv1_1_2_2_1, [self._batch_size, -1]),
-          tf.reshape(conv1_2_1_1_2, [self._batch_size, -1]),
-          tf.reshape(conv1_2_1_2_1, [self._batch_size, -1])], 1)
-
-        conv_input = tf.reshape(concated_input, [self._batch_size, -1])
-
-        layer4_output = tf.add(tf.matmul(conv_input, model_matmul4_weights), model_matmul4_biases, name="layer4_output")
+        # matmul4
+        # weight is [128, 4], output is [batch_size, 4]
+        with tf.variable_scope('%s_matmul4' % self._name) as scope:
+            weights4 = self._params_dict.get('model_matmul4_weights')
+            biases4 = self._params_dict.get('model_matmul4_biases')
+            layer4_output = tf.add(tf.matmul(layer3_output, weights4), biases4, name="layer4_output")
+            # expected_q = tf.nn.softmax(tf.matmul(layer3_output, weights4) + biases4)
+            # _activation_summary(softmax_linear)
+        # Save the model in a specific name.
         action_q = layer4_output
-
+        # output the final data, [batch_size, ACTION_NUMBER]
+        # The first return value is useful, the second and third is for debugging.
+        # params_dict.get('model_conv1_weights')
+        # expected_q = tf.Print(expected_q,[expected_q, layer3_output, layer2_output, layer1_output],'debug info: ', summarize=16)
+        # expected_q = tf.Print(expected_q, [expected_q, params_dict.get('model_conv1_weights'), params_dict.get('model_conv1_biases')], "debug info:", summarize=16)
         return action_q
 
     def create_feed_dict(self, batch_size, current_board, next_board, current_action, current_revenue):
@@ -237,10 +242,8 @@ if __name__ == "__main__":
     gm.generate_model()
     tensor = gm.get_internal_variable().get("raw_loss")
     tensor1 = gm.get_internal_variable().get("current_q")
-    print "AAAAAAAAAAAAAAAAAAAAA"
     print tensor
     print tensor1
-    print "AAAAAAAAAAAAAAAAAAAAA"
     with tf.Session() as sess:
         init = tf.global_variables_initializer()
         print init
